@@ -11,7 +11,7 @@ public class BookService {
     private BookRepository bookRepository;
 
     // 基本CRUD操作(必須)
-    public BookModel create(BookModel id) {
-        
+    public BookModel create(BookModel book) {
+
     }
 }
