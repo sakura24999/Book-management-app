@@ -7,7 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "book")
+@Table(name = "books")
 public class BookModel {
     // 主キー定義フィールド
     @Id
@@ -15,27 +15,27 @@ public class BookModel {
     private Long id;
 
     // プライベートフィールド
-    private String book;
     private String title;
     private String author;
+    private String isbn;
     private String genre;
-    private Boolean status;
+    private Boolean available;
 
     // デフォルトコンストラクタ(JPA用)
     public BookModel(){}
 
     // コンストラクタ
-    public BookModel(String book) {
-        this.book = book;
+    public BookModel(String title, String author, String isbn, String genre, Boolean available) {
         this.title = title;
         this.author = author;
+        this.isbn = isbn;
         this.genre = genre;
-        this.status = true;
+        this.available = true;
     }
 
     // ゲッター
-    public String getBook() {
-        return this.book;
+    public Long getId() {
+        return this.id;
     }
 
     public String getTitle() {
@@ -46,17 +46,21 @@ public class BookModel {
         return this.author;
     }
 
+    public String getisbn() {
+        return this.isbn;
+    }
+
     public String getGenre() {
         return this.genre;
     }
 
-    public Boolean getStatus() {
-        return this.status;
+    public Boolean getAvailable() {
+        return this.available;
     }
 
     // セッター
-    public void setBook(String book) {
-        this.book = book;
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public void setTitle(String title) {
@@ -67,11 +71,15 @@ public class BookModel {
         this.author = author;
     }
 
+    public void setIsbn(String isbn) {
+        this.isbn = isbn;
+    }
+
     public void setGenre(String genre) {
         this.genre = genre;
     }
 
-    public void setStatus(Boolean status) {
-        this.status = status;
+    public void setAvailable(Boolean available) {
+        this.available = available;
     }
 }
