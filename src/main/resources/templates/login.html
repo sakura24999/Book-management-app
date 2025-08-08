@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン</title>
+    <link rel="stylesheet" th:href="@{/login.css}">
+</head>
+<body>
+    <div class="book_login_container">
+        <header class="book_login_header">
+            <p class="book_login_header_title">Book_Management</p>
+        </header>
+        <div class="book_login_container_main">
+
+            <!-- メールアドレス -->
+            <form th:action="@{/login}" class="book_manegement_login">
+                <input type="email" name="email" placeholder="メールアドレス" class="book_manegement_login_email">
+            </form>
+            
+            <!-- パスワード -->
+            <form th:action="@{/login}" class="book_manegement_login">
+                <input type="password" name="password" class="book_manegement_login_password">
+            </form>
+
+            <!-- ログインボタン -->
+            <form th:action="@{/login}" class="book_manegement_login">
+                <button type="submit" name="submit">ログイン</button>
+            </form>
+
+        </div>
+    </div>
+</body>
+</html>
