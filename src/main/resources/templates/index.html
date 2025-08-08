@@ -1,11 +1,36 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Book_Management</title>
+    <link rel="stylesheet" th:href="@{/style.css}">
 </head>
 <body>
-    
+    <div class="book_manegement_container">
+        <header class="book_manegement_header">
+            <p class="book_manegement_header_title">Book_Management</p>
+        </header>
+        <div class="book_manegement_container_main">
+            <!-- 氏名 -->
+            <form th:action="@{/register}" class="book_manegement_register"><input type="text" name="text" placeholder="氏名" class="book_manegement_register_name"></form>
+
+            <!-- メールアドレス -->
+            <form th:action="@{/register}" class="book_manegement_register">
+                <input type="email" name="email" placeholder="メールアドレス" class="book_manegement_register_email">
+            </form>
+
+            <!-- パスワード -->
+            <form th:action="@{/register}" class="book_manegement_register">
+                <input type="password" name="password" class="book_manegement_register_password">
+            </form>
+
+            <!-- 登録ボタン -->
+            <form th:action="@{/register}" class="book_manegement_register">
+                <button type="submit" name="submit">登録</button>
+            </form>
+            <p class="book_manegement_login" th:href="@{/login.html}">登録している方はこちらをクリック</p>
+        </div>
+    </div>
 </body>
 </html>
