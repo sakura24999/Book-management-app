@@ -1,5 +1,6 @@
 package com.example.Book_management.Model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,20 +13,31 @@ public class BookModel {
     // 主キー定義フィールド
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+
+    @Column(name = "book_id")
+    private Long bookId;
 
     // プライベートフィールド
+    @Column(name = "title")
     private String title;
+
+    @Column(name = "author")
     private String author;
+
+    @Column(name = "isbn")
     private String isbn;
+
+    @Column(name = "genre")
     private String genre;
+
+    @Column(name = "available")
     private Boolean available;
 
     // デフォルトコンストラクタ(JPA用)
     public BookModel(){}
 
     // コンストラクタ
-    public BookModel(String title, String author, String isbn, String genre, Boolean available) {
+    public BookModel(String title, String author, String isbn, String genre) {
         this.title = title;
         this.author = author;
         this.isbn = isbn;
@@ -35,7 +47,7 @@ public class BookModel {
 
     // ゲッター
     public Long getId() {
-        return this.id;
+        return this.bookId;
     }
 
     public String getTitle() {
@@ -46,7 +58,7 @@ public class BookModel {
         return this.author;
     }
 
-    public String getisbn() {
+    public String getIsbn() {
         return this.isbn;
     }
 
@@ -59,8 +71,8 @@ public class BookModel {
     }
 
     // セッター
-    public void setId(Long id) {
-        this.id = id;
+    public void setId(Long bookId) {
+        this.bookId = bookId;
     }
 
     public void setTitle(String title) {
