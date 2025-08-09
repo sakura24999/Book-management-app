@@ -17,6 +17,14 @@ CREATE TABLE IF NOT EXISTS loan_history (
     FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE
 );
 
+-- Usersテーブル --
+CREATE TABLE IF NOT EXISTS users(
+    user_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    book_id BIGINT NOT NULL,
+    history_id BIGINT NOT NULL,
+    
+)
+
 -- インデックス(検索速度向上のため)
 CREATE INDEX idx_books_isbn ON books(isbn);
 CREATE INDEX idx_books_available ON books(available);
