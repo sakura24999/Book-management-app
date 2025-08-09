@@ -11,5 +11,5 @@ import java.util.List;
 public interface LoanHistoryRepository extends JpaRepository<LoanHistoryModel,Long>{
     // 検索メソッド
     List<LoanHistoryModel>findByLendDate(LocalDateTime lendDate);
-    List<LoanHistoryModel>findByGiveback(LocalDateTime returnDate);
+    List<LoanHistoryModel>findByReturnDate(LocalDateTime returnDate);
 }
