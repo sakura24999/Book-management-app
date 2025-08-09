@@ -46,7 +46,7 @@ public class BookModel {
     }
 
     // ゲッター
-    public Long getId() {
+    public Long getBookId() {
         return this.bookId;
     }
 
@@ -71,7 +71,7 @@ public class BookModel {
     }
 
     // セッター
-    public void setId(Long bookId) {
+    public void setBookId(Long bookId) {
         this.bookId = bookId;
     }
 
