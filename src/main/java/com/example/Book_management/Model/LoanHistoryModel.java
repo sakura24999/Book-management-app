@@ -23,6 +23,9 @@ public class LoanHistoryModel {
     @Column(name = "book_id")
     private Long bookId;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     // フィールド
     @Column(name = "lend_date")
     private LocalDateTime lendDate;
