@@ -25,7 +25,7 @@
                 <!-- パスワード -->
                 <div class="form-group">
                     <label for="password" class="form-label">パスワード</label>
-                    <input type="password" name="password" id="password" class="form-input" required>
+                    <input type="password" name="password" id="password" placeholder="8文字以上で入力" minlength="8" class="form-input" required>
                 </div>
                 
                 <!-- ログイン状態を保持 -->
@@ -46,7 +46,7 @@
                 <!-- 新規登録へのリンク -->
                 <div class="form-footer">
                     <p>アカウントをお持ちでない方は</p>
-                    <a th:href="@{/register}" class="link">新規登録はこちら</a>
+                    <a th:href="@{/}" class="link">新規登録はこちら</a>
                 </div>
             </div>
         </main>
