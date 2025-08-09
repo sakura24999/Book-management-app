@@ -3,32 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ログイン</title>
+    <title>Book Management - ログイン</title>
     <link rel="stylesheet" th:href="@{/login.css}">
 </head>
 <body>
-    <div class="book_login_container">
-        <header class="book_login_header">
-            <p class="book_login_header_title">Book_Management</p>
+    <div class="book-login-container">
+        <header class="book-login-header">
+            <h1 class="book-login-header-title">Book Management</h1>
         </header>
-        <div class="book_login_container_main">
+        <main class="book-login-main">
+            <div class="form-container">
+                <h2 class="form-title">ログイン</h2>
+                <form th:action="@{/login}" method="post" class="login-form">
 
-            <!-- メールアドレス -->
-            <form th:action="@{/login}" class="book_manegement_login">
-                <input type="email" name="email" placeholder="メールアドレス" class="book_manegement_login_email">
-            </form>
+                <!-- メールアドレス -->
+                <div class="form-group">
+                    <label for="email" class="form-label">メールアドレス</label>
+                    <input type="email" name="email" id="email" placeholder="example@email.com" class="form-input" required autofocus>
+                </div>
             
-            <!-- パスワード -->
-            <form th:action="@{/login}" class="book_manegement_login">
-                <input type="password" name="password" class="book_manegement_login_password">
-            </form>
+                <!-- パスワード -->
+                <div class="form-group">
+                    <label for="password" class="form-label">パスワード</label>
+                    <input type="password" name="password" id="password" class="form-input" required>
+                </div>
+                
+                <!-- ログイン状態を保持 -->
+                <div class="form-check">
+                    <input type="checkbox" id="rememberMe" name="rememberMe" class="form-checkbox">
+                    <label for="rememberMe" class="form-check-label">ログイン状態を保持する</label>
+                </div>
 
-            <!-- ログインボタン -->
-            <form th:action="@{/login}" class="book_manegement_login">
-                <button type="submit" name="submit">ログイン</button>
-            </form>
+                <!-- ログインボタン -->
+                <button class="btn btn-primary" type="submit">ログイン</button>
 
-        </div>
+                <!-- エラーメッセージ表示エリア -->
+                <div class="error-message" th:if="${error}">
+                    <p th:text="${error}"></p>
+                </div>
+                </form>
+
+                <!-- 新規登録へのリンク -->
+                <div class="form-footer">
+                    <p>アカウントをお持ちでない方は</p>
+                    <a th:href="@{/register}" class="link">新規登録はこちら</a>
+                </div>
+            </div>
+        </main>
     </div>
 </body>
 </html>
