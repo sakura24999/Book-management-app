@@ -13,10 +13,15 @@ public class BookController {
     @Autowired
     private BookService bookService;
 
-    // Home画面
+    // Home画面(登録)
     @GetMapping("/")
     public String index() {
         return "index";
     }
     
+    // ログイン画面
+    @GetMapping("/login")
+    public String login() {
+        return "login";
+    }
 }
