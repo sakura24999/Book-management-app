@@ -3,34 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Book_Management</title>
+    <title>Book Management - ユーザー登録</title>
     <link rel="stylesheet" th:href="@{/style.css}">
 </head>
 <body>
-    <div class="book_manegement_container">
-        <header class="book_manegement_header">
-            <p class="book_manegement_header_title">Book_Management</p>
+    <div class="book-manegement-container">
+        <header class="book-manegement-header">
+            <h1 class="book_manegement_header_title">Book Management</h1>
         </header>
-        <div class="book_manegement_container_main">
-            <!-- 氏名 -->
-            <form th:action="@{/register}" class="book_manegement_register"><input type="text" name="text" placeholder="氏名" class="book_manegement_register_name"></form>
+        <main class="book-manegement-main">
+            <div class="form-container">
+                <h2 class="form-title">新規登録</h2>
+            
+                <form th:action="@{/register}" class="registration-form" method="post">
 
-            <!-- メールアドレス -->
-            <form th:action="@{/register}" class="book_manegement_register">
-                <input type="email" name="email" placeholder="メールアドレス" class="book_manegement_register_email">
-            </form>
+                    <!-- 氏名 -->
+                    <div class="form-group">
+                        <label for="name" class="form-label">氏名</label>
+                        <input type="text" name="name" id="name" placeholder="山田太郎" class="form-input" required>
+                    </div>
 
-            <!-- パスワード -->
-            <form th:action="@{/register}" class="book_manegement_register">
-                <input type="password" name="password" class="book_manegement_register_password">
-            </form>
+                    <!-- メールアドレス -->
+                    <div class="form-group">
+                        <label for="email" class="form-label">メールアドレス</label>
+                        <input type="email" name="email" id="email" placeholder="example@email.com" class="form-input" required>
+                    </div>
 
-            <!-- 登録ボタン -->
-            <form th:action="@{/register}" class="book_manegement_register">
-                <button type="submit" name="submit">登録</button>
-            </form>
-            <p class="book_manegement_login" th:href="@{/login.html}">登録している方はこちらをクリック</p>
-        </div>
+                    <!-- パスワード -->
+                    <div class="form-group">
+                        <label for="password" class="form-label">パスワード</label>
+                        <input type="password" name="password" id="password" placeholder="8文字以上で入力" class="form-unput" minlength="8" required>
+                    </div>
+
+                    <!-- パスワード(確認) -->
+                    <div class="form-group">
+                        <label for="confirmPassword" class="form-label">パスワード(確認)</label>
+                        <input type="password" name="confirmPassword" id="confirmPassword" placeholder="パスワードを再入力" class="form-input" minlength="8" required>
+                    </div>
+
+                    <!-- 登録ボタン -->
+                    <button class="btn btn-primary" type="submit">登録</button>
+                </form>
+
+                <!-- ログインページへのリンク -->
+                <div class="form-footer">
+                    <p>すでにアカウントをお持ちの方は</p>
+                    <a th:href="@{/login}" class="link">ログインはこちら</a>
+                </div>
+            </div>
+        </main>
     </div>
 </body>
 </html>
