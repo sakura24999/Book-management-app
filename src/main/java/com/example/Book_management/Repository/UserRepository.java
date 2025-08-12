@@ -13,4 +13,7 @@ public interface UserRepository extends JpaRepository<UserModel, Long>{
     List<UserModel> findByEmail(String email);
     List<UserModel> findByPassword(String password);
     List<UserModel> findByConfirmPassword(String confirmPassword);
+
+    // カスタム検索
+    boolean existsByEmail(String email);
 }
