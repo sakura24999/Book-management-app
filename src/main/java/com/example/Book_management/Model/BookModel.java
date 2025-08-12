@@ -47,27 +47,27 @@ public class BookModel {
 
     // ゲッター
     public Long getBookId() {
-        return this.bookId;
+        return bookId;
     }
 
     public String getTitle() {
-        return this.title;
+        return title;
     }
 
     public String getAuthor() {
-        return this.author;
+        return author;
     }
 
     public String getIsbn() {
-        return this.isbn;
+        return isbn;
     }
 
     public String getGenre() {
-        return this.genre;
+        return genre;
     }
 
     public Boolean getAvailable() {
-        return this.available;
+        return available;
     }
 
     // セッター
