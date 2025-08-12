@@ -18,7 +18,7 @@ public class BookService {
 
     public BookModel findById(Long bookId) {
         return bookRepository.findById(bookId)
-        .orElseThrow(() -> new RuntimeException("Book not found with id: " + bookId));
+        .orElseThrow(() -> new RuntimeException("本が見つかりません: " + bookId));
     }
 
     public List<BookModel> findAll() {
