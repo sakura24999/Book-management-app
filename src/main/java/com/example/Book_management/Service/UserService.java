@@ -61,10 +61,10 @@ public class UserService {
         if (userRepository.existsByEmail(newUser.getEmail())) {
             throw new IllegalArgumentException("このメールアドレスはすでに登録されています: " + newUser.getEmail());
         }
-        return userRepository.save(newUser);
         // パスワードの確認
         if (userRepository.existsByPassword(newUser.getPassword()) != userRepository.existsByConfirmPassword(newUser.getConfirmPassword())) {
             throw new IllegalArgumentException("パスワードと確認用パスワードが一致しません: " + newUser.getPassword());
         }
+        return userRepository.save(newUser);
     }
 }
