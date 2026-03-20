@@ -34,3 +34,6 @@ ALBの認証機能とAWS Cognitを活用し、OIDC(OpenIDConnect)にてSSO(シ�
 
 8.EventBridge→Lambda→S3(夜間バッチ):
 夜間バッチは月に1回・図書システムのデータなのでそこまで時間が掛からないので、コスト最適化を優先にし、安価なLambdaを活用(要件4・8対応)
+
+9.SSM session Manager:
+運用者のログインをSSM session Managerを活用し、低コストになるように設計(要件8対応)
