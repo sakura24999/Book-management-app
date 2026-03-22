@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Book Management System - Cognito User Pool'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: book-management
+  AlbDnsName:
+    Type: String
+    Description: ALB DNS Name for Cognito callback URL
+    Default: 'your-alb-dns-name'
+
+Outputs:
+  CognitoUserPoolArn:
+    Value: !GetAtt UserPool.Arn
+    Export:
+      Name: !Sub '${ProjectName}-CognitoUserPoolArn'
+
+  CognitoUserPoolClientId:
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${ProjectName}-CognitoUserPoolClientId'
+
+  CognitoUserPoolDomain:
+    Value: !Sub '${ProjectName}-auth-${AWS::AccountId}'
+    Export:
+      Name: !Sub '${ProjectName}-CognitoUserPoolDomain'
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-user-pool'
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+      MfaConfiguration: 'OFF'
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: name
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: UserPoolDomain
+    Properties:
+      ClientName: !Sub '${ProjectName}-alb-client'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      CallbackURLs:
+        - !Sub 'https://${AlbDnsName}/oauth2/idpresponse'
+      LogoutURLs:
+        - !Sub 'https://${AlbDnsName}'
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+      SupportedIdentityProviders:
+        - COGNITO
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub '${ProjectName}-auth-${AWS::AccountId}'
+      UserPoolId: !Ref UserPool

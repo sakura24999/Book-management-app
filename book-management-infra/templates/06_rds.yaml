@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Book Management System - RDS MySQL Multi-AZ'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: book-management
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    Description: RDS instance class
+  DBName:
+    Type: String
+    Default: bookmanagement
+  DBUsername:
+    Type: String
+    Default: admin
+    NoEcho: true
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: RDS master password (min 8 chars)
+
+Outputs:
+  RdsEndpoint:
+    Value: !GetAtt RDSInstance.Endpoint.Address
+    Export:
+      Name: !Sub '${ProjectName}-RdsEndpoint'
+
+  RdsPort:
+    Value: !GetAtt RDSInstance.Endpoint.Port
+    Export:
+      Name: !Sub '${ProjectName}-RdsPort'
+
+Resources:
+  # ----------------------------------------
+  # DB Subnet Group
+  # RDSをプライベートサブネット(AZ-a/AZ-c)に配置
+  # Multi-AZには最低2AZのサブネットが必要
+  # ----------------------------------------
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub '${ProjectName}-db-subnet-group'
+      DBSubnetGroupDescription: Subnet group for RDS Multi-AZ
+      SubnetIds:
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzA'
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzC'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db-subnet-group'
+
+  # ----------------------------------------
+  # RDS Instance
+  # Multi-AZ: プライマリ(AZ-a) + スタンバイ(AZ-c)
+  # 障害時は自動フェイルオーバー（ダウンタイム最小化）
+  # 自動バックアップ: 1日1回・7日間保存
+  # ----------------------------------------
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot  # スタック削除時もスナップショットを保存
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-rds'
+      DBInstanceClass: !Ref DBInstanceClass
+      Engine: mysql
+      EngineVersion: '8.0'
+      DBName: !Ref DBName
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      # Multi-AZ: true でスタンバイが自動作成される
+      # プライマリ障害時に自動フェイルオーバー
+      MultiAZ: true
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-RdsSgId'
+      # ストレージ設定
+      AllocatedStorage: '20'
+      StorageType: gp3
+      StorageEncrypted: true    # 社員個人情報保護のため暗号化必須
+      # バックアップ設定（要件3対応：データ消失防止）
+      BackupRetentionPeriod: 7         # 7日間保存
+      PreferredBackupWindow: '01:00-02:00'   # 夜間バッチ後に実行
+      PreferredMaintenanceWindow: 'sun:03:00-sun:04:00'
+      # 削除保護（本番環境での誤削除防止）
+      DeletionProtection: true
+      # パラメータ設定
+      PubliclyAccessible: false   # インターネットから直接アクセス不可
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-rds'

@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Book Management System - VPC, Subnets, IGW, Route Tables'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: book-management
+    Description: Project name used as prefix for resource names
+
+Outputs:
+  VpcId:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${ProjectName}-VpcId'
+
+  PublicSubnetAzA:
+    Value: !Ref PublicSubnetAzA
+    Export:
+      Name: !Sub '${ProjectName}-PublicSubnetAzA'
+
+  PublicSubnetAzC:
+    Value: !Ref PublicSubnetAzC
+    Export:
+      Name: !Sub '${ProjectName}-PublicSubnetAzC'
+
+  PrivateSubnetAzA:
+    Value: !Ref PrivateSubnetAzA
+    Export:
+      Name: !Sub '${ProjectName}-PrivateSubnetAzA'
+
+  PrivateSubnetAzC:
+    Value: !Ref PrivateSubnetAzC
+    Export:
+      Name: !Sub '${ProjectName}-PrivateSubnetAzC'
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpc'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-igw'
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetAzA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: ap-northeast-1a
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-subnet-aza'
+
+  PublicSubnetAzC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: ap-northeast-1c
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-subnet-azc'
+
+  PrivateSubnetAzA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: ap-northeast-1a
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-subnet-aza'
+
+  PrivateSubnetAzC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.12.0/24
+      AvailabilityZone: ap-northeast-1c
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-subnet-azc'
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-rtb'
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetAzARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetAzA
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetAzCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetAzC
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-rtb'
+
+  PrivateSubnetAzARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetAzA
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetAzCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetAzC
+      RouteTableId: !Ref PrivateRouteTable

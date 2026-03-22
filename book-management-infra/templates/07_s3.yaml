@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Book Management System - S3 Buckets'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: book-management
+
+Outputs:
+  BackupBucketName:
+    Value: !Ref BackupBucket
+    Export:
+      Name: !Sub '${ProjectName}-BackupBucketName'
+
+  BackupBucketArn:
+    Value: !GetAtt BackupBucket.Arn
+    Export:
+      Name: !Sub '${ProjectName}-BackupBucketArn'
+
+Resources:
+  # ----------------------------------------
+  # バックアップ・バッチ結果保存用S3バケット
+  # バージョニングON: 誤操作・誤削除からのデータ復元
+  # 暗号化: 社員個人情報保護のため
+  # ライフサイクル: コスト最適化のため古いバージョンを自動削除
+  # ----------------------------------------
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain  # スタック削除時もバケットを残す（データ保護）
+    Properties:
+      BucketName: !Sub '${ProjectName}-backup-${AWS::AccountId}'
+      # バージョニング: 誤操作でのデータ上書き・削除から復元可能
+      VersioningConfiguration:
+        Status: Enabled
+      # サーバーサイド暗号化
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      # パブリックアクセス完全ブロック
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      # ライフサイクルポリシー（コスト最適化）
+      LifecycleConfiguration:
+        Rules:
+          # バックアップデータ: 30日後にGlacierへ移行
+          - Id: BackupToGlacier
+            Status: Enabled
+            Prefix: backups/
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: GLACIER
+            ExpirationInDays: 365
+          # 古いバージョン: 90日後に削除
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 90
+          # バッチ結果: 90日後に削除
+          - Id: DeleteBatchResults
+            Status: Enabled
+            Prefix: batch-results/
+            ExpirationInDays: 90
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-backup'
+
+  # ----------------------------------------
+  # S3バケットポリシー
+  # LambdaとEC2からのアクセスのみ許可
+  # ----------------------------------------
+  BackupBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BackupBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # SSL接続のみ許可（HTTP拒否）
+          - Sid: DenyNonSSL
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt BackupBucket.Arn
+              - !Sub '${BackupBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false

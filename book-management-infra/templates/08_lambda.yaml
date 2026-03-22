@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Book Management System - Lambda + EventBridge (Night Batch)'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: book-management
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-lambda-policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub
+                  - '${BucketArn}/batch-results/*'
+                  - BucketArn: !ImportValue
+                      Fn::Sub: '${ProjectName}-BackupBucketArn'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-lambda-role'
+
+  NightBatchFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-night-batch'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      VpcConfig:
+        SecurityGroupIds:
+          - !ImportValue
+            Fn::Sub: '${ProjectName}-LambdaSgId'
+        SubnetIds:
+          - !ImportValue
+            Fn::Sub: '${ProjectName}-PrivateSubnetAzA'
+          - !ImportValue
+            Fn::Sub: '${ProjectName}-PrivateSubnetAzC'
+      # インラインコード（後でjarに差し替え）
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          from datetime import datetime
+
+          def handler(event, context):
+              print(f"Night batch started at {datetime.now()}")
+              s3 = boto3.client('s3')
+              bucket = os.environ.get('S3_BUCKET', '')
+              result = {
+                  'status': 'success',
+                  'executed_at': str(datetime.now()),
+                  'message': 'Night batch completed'
+              }
+              if bucket:
+                  s3.put_object(
+                      Bucket=bucket,
+                      Key=f"batch-results/{datetime.now().strftime('%Y%m%d')}.json",
+                      Body=json.dumps(result)
+                  )
+              return result
+      Environment:
+        Variables:
+          S3_BUCKET: !ImportValue
+            Fn::Sub: '${ProjectName}-BackupBucketName'
+          PROJECT_NAME: !Ref ProjectName
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-night-batch'
+
+  NightBatchSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-night-batch-schedule'
+      Description: Monthly night batch for book management system
+      ScheduleExpression: 'cron(0 17 1 * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: NightBatchLambda
+          Arn: !GetAtt NightBatchFunction.Arn
+
+  NightBatchPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref NightBatchFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt NightBatchSchedule.Arn

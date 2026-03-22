@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Book Management System - ALB'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: book-management
+  CertificateArn:
+    Type: String
+    Description: ACM Certificate ARN for HTTPS
+    Default: 'arn:aws:acm:ap-northeast-1:123456789012:certificate/xxxxxxxx'
+
+Outputs:
+  AlbArn:
+    Value: !Ref ALB
+    Export:
+      Name: !Sub '${ProjectName}-AlbArn'
+
+  AlbDnsName:
+    Value: !GetAtt ALB.DNSName
+    Export:
+      Name: !Sub '${ProjectName}-AlbDnsName'
+
+  TargetGroupArn:
+    Value: !Ref TargetGroup
+    Export:
+      Name: !Sub '${ProjectName}-TargetGroupArn'
+
+Resources:
+  # ----------------------------------------
+  # ALB
+  # パブリックサブネットに配置
+  # マルチAZ必須のため AZ-a / AZ-c 両方を指定
+  # ----------------------------------------
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${ProjectName}-alb'
+      Type: application
+      Scheme: internet-facing
+      Subnets:
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PublicSubnetAzA'
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PublicSubnetAzC'
+      SecurityGroups:
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-AlbSgId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-alb'
+
+  # ----------------------------------------
+  # Target Group
+  # EC2のSpring Boot(8080)へルーティング
+  # ヘルスチェック: /actuator/health エンドポイント
+  # ----------------------------------------
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${ProjectName}-tg'
+      Port: 8080
+      Protocol: HTTP
+      VpcId: !ImportValue
+        Fn::Sub: '${ProjectName}-VpcId'
+      TargetType: instance
+      HealthCheckPath: /actuator/health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-tg'
+
+  # ----------------------------------------
+  # HTTPS Listener (443)
+  # Cognito認証をここで設定
+  # 認証済みユーザーのみEC2へルーティング
+  # ----------------------------------------
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      DefaultActions:
+        # Step1: Cognitoで認証（未認証ならCognitoログイン画面へリダイレクト）
+        - Type: authenticate-cognito
+          Order: 1
+          AuthenticateCognitoConfig:
+            UserPoolArn: !ImportValue
+              Fn::Sub: '${ProjectName}-CognitoUserPoolArn'
+            UserPoolClientId: !ImportValue
+              Fn::Sub: '${ProjectName}-CognitoUserPoolClientId'
+            UserPoolDomain: !ImportValue
+              Fn::Sub: '${ProjectName}-CognitoUserPoolDomain'
+            OnUnauthenticatedRequest: authenticate
+            SessionCookieName: AWSELBAuthSessionCookie
+            SessionTimeout: 3600
+        # Step2: 認証済みならEC2へフォワード
+        - Type: forward
+          Order: 2
+          TargetGroupArn: !Ref TargetGroup
+
+  # ----------------------------------------
+  # HTTP Listener (80)
+  # HTTPSへリダイレクト
+  # ----------------------------------------
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            StatusCode: HTTP_301

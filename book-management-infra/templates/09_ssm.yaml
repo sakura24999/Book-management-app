@@ -1,0 +1,195 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Book Management System - SSM Session Manager Settings'
+
+# ----------------------------------------
+# このテンプレートについて
+# SSM Session Managerを使うための設定を管理
+#
+# なぜSSM Session Managerを採用したか：
+#   - 踏み台サーバー不要 → EC2コスト削減
+#   - SSH鍵管理不要     → セキュリティリスク低減
+#   - 操作ログが自動的にCloudTrailに記録される
+#
+# なぜNATゲートウェイを使わないか：
+#   - NATゲートウェイは約$50/月と高コスト
+#   - VPCエンドポイント経由でSSM通信が可能
+#   - プライベートサブネットのEC2をインターネットに
+#     出さずにAWS APIと通信できる
+# ----------------------------------------
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: book-management
+
+Outputs:
+  SsmEndpointSgId:
+    Value: !Ref SsmEndpointSecurityGroup
+    Export:
+      Name: !Sub '${ProjectName}-SsmEndpointSgId'
+
+  SessionLogBucketName:
+    Value: !Ref SessionLogBucket
+    Export:
+      Name: !Sub '${ProjectName}-SessionLogBucketName'
+
+Resources:
+  # ----------------------------------------
+  # Security Group for VPC Endpoints
+  # VPCエンドポイント（SSM）へのアクセス制御
+  # EC2からのHTTPS(443)のみ許可
+  # ----------------------------------------
+  SsmEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for SSM VPC Endpoints
+      VpcId: !ImportValue
+        Fn::Sub: '${ProjectName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !ImportValue
+            Fn::Sub: '${ProjectName}-Ec2SgId'
+          Description: HTTPS from EC2 to SSM VPC Endpoint
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-ssm-endpoint-sg'
+
+  # ----------------------------------------
+  # VPC Endpoints for SSM Session Manager
+  # 3つのエンドポイントがすべて必要
+  #
+  # ssm         : セッション開始・パラメータストア
+  # ssmmessages : Session Managerのデータ通信
+  # ec2messages : EC2とSSMエージェントの通信
+  # ----------------------------------------
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${ProjectName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssm'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzA'
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzC'
+      SecurityGroupIds:
+        - !Ref SsmEndpointSecurityGroup
+      PrivateDnsEnabled: true  # DNS名でSSMエンドポイントに接続
+
+  SSMMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${ProjectName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssmmessages'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzA'
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzC'
+      SecurityGroupIds:
+        - !Ref SsmEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  EC2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue
+        Fn::Sub: '${ProjectName}-VpcId'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ec2messages'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzA'
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzC'
+      SecurityGroupIds:
+        - !Ref SsmEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  # ----------------------------------------
+  # Session Manager ログ保存用S3バケット
+  # 運用担当者の操作ログを保存
+  # セキュリティ監査・証跡として活用
+  # ----------------------------------------
+  SessionLogBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub '${ProjectName}-session-logs-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      # ログは90日後に自動削除（コスト最適化）
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldSessionLogs
+            Status: Enabled
+            ExpirationInDays: 90
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-session-logs'
+
+  SessionLogBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SessionLogBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyNonSSL
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt SessionLogBucket.Arn
+              - !Sub '${SessionLogBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # ----------------------------------------
+  # SSM Session Manager 設定ドキュメント
+  # セッションのログ出力先をS3に指定
+  # ----------------------------------------
+  SessionManagerPreferences:
+    Type: AWS::SSM::Document
+    Properties:
+      Name: !Sub 'SSM-SessionManagerRunShell-${ProjectName}'
+      DocumentType: Session
+      Content:
+        schemaVersion: '1.0'
+        description: Session Manager preferences for Book Management System
+        sessionType: Standard_Stream
+        inputs:
+          s3BucketName: !Ref SessionLogBucket
+          s3KeyPrefix: 'session-logs/'
+          s3EncryptionEnabled: true
+          cloudWatchLogGroupName: !Sub '/aws/ssm/${ProjectName}/sessions'
+          cloudWatchEncryptionEnabled: false
+          cloudWatchStreamingEnabled: true
+          # アイドルタイムアウト: 30分で自動切断
+          idleSessionTimeout: '30'
+          maxSessionDuration: '120'
+
+  # ----------------------------------------
+  # CloudWatch Log Group for SSM Sessions
+  # セッションログをCloudWatch Logsにも送信
+  # リアルタイム監視が可能
+  # ----------------------------------------
+  SsmSessionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/ssm/${ProjectName}/sessions'
+      RetentionInDays: 90

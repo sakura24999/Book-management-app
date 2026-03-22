@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Book Management System - EC2, AutoScaling, SSM IAM Role'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: book-management
+  InstanceType:
+    Type: String
+    Default: t3.small
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Outputs:
+  AutoScalingGroupName:
+    Value: !Ref AutoScalingGroup
+    Export:
+      Name: !Sub '${ProjectName}-AsgName'
+
+Resources:
+  Ec2IamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-ec2-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-ec2-role'
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub '${ProjectName}-ec2-profile'
+      Roles:
+        - !Ref Ec2IamRole
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${ProjectName}-lt'
+      LaunchTemplateData:
+        ImageId: !Ref AmiId
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt Ec2InstanceProfile.Arn
+        # SecurityGroupIdsのみ指定（NetworkInterfacesと併用しない）
+        SecurityGroupIds:
+          - !ImportValue
+            Fn::Sub: '${ProjectName}-Ec2SgId'
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum update -y
+            yum install -y java-17-amazon-corretto
+            mkdir -p /opt/app
+            cat > /etc/systemd/system/book-management.service << 'SYSTEMD'
+            [Unit]
+            Description=Book Management Application
+            After=network.target
+
+            [Service]
+            User=ec2-user
+            ExecStart=/usr/bin/java -jar /opt/app/app.jar
+            SuccessExitStatus=143
+            Restart=always
+            RestartSec=10
+
+            [Install]
+            WantedBy=multi-user.target
+            SYSTEMD
+            systemctl daemon-reload
+            systemctl enable book-management
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub '${ProjectName}-ec2'
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Sub '${ProjectName}-asg'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: '2'
+      MaxSize: '4'
+      DesiredCapacity: '2'
+      VPCZoneIdentifier:
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzA'
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-PrivateSubnetAzC'
+      TargetGroupARNs:
+        - !ImportValue
+          Fn::Sub: '${ProjectName}-TargetGroupArn'
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 120
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-asg'
+          PropagateAtLaunch: true
+
+  ScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 70.0
