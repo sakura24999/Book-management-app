@@ -40,7 +40,7 @@ ALBの認証機能とAWS Cognitoを活用し、OIDC(OpenIDConnect)にてSSO(シ�
 踏み台サーバー不要・SSH鍵管理不要・操作ログをCloudTrailで記録できるため、SSMを選択
 運用担当者のログインをSSM session Managerを活用し、低コストになるように設計(要件8対応)
 
-（10番以降は、要件とは別で実装を実施）
+（10番以降は、要件とは別で実装を実施）<br>
 10.Secrets Manager(DBパスワード管理)
 ソースコードにパスワードを直書きすると、GitHubに誤コミットした際に情報漏洩が発生するリスクがある。
 そのため、DB接続情報をSecrets Managerで一括管理し、EC2起動時・Lambda実行時に動的取得する設計を追加
