@@ -46,7 +46,6 @@ ALBの認証機能とAWS Cognitoを活用し、OIDC(OpenIDConnect)にてSSO(シ�
 そのため、DB接続情報をSecrets Managerで一括管理し、EC2起動時・Lambda実行時に動的取得する設計を追加
 
 ## インフラアーキテクチャ構成
-
 ![アーキテクチャ図](docs/architecture.jpg)
 
 ## 要件定義(CI/CDパイプライン)
@@ -89,3 +88,4 @@ AWS CodeDeployを使う場合、従量課金制のLambdaを活用することで
 (要件6対応)
 
 ## CI/CDパイプラインアーキテクチャ構成
+![アーキテクチャ図](docs/CICD-Pipline-architecture.jpg)
